@@ -1,10 +1,11 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_from_directory
 import subprocess
 import uuid
 import os
 
 app = Flask(__name__)
-app.static_folder = os.getcwd()
+CLIP_FOLDER = "clips"
+os.makedirs(CLIP_FOLDER, exist_ok=True)
 
 @app.route("/clip", methods=["POST"])
 def clip_video():
@@ -17,12 +18,13 @@ def clip_video():
 
     video_id = str(uuid.uuid4())
     output_filename = f"{video_id}.mp4"
+    output_path = os.path.join(CLIP_FOLDER, output_filename)
 
     try:
-        # Download video using yt-dlp with cookies for authentication
+        # Download video
         subprocess.run([
             "yt-dlp",
-            "--cookies", "cookies.txt",  # <- this line enables login-required content
+            "--cookies", "cookies.txt",
             "-f", "bestvideo[ext=mp4]+bestaudio[ext=m4a]/mp4",
             "-o", "input.%(ext)s",
             video_url
@@ -34,11 +36,13 @@ def clip_video():
             "-i", "input.mp4",
             "-ss", "00:00:05", "-t", "00:00:30",
             "-vf", "scale=720:1280",
-            output_filename
+            output_path
         ], check=True)
 
+        # Serve full URL
+        base_url = request.url_root.rstrip("/")
         return jsonify({
-            "clipUrl": f"/videos/{output_filename}",
+            "clipUrl": f"{base_url}/clips/{output_filename}",
             "creator": creator
         })
 
@@ -48,9 +52,9 @@ def clip_video():
             "details": str(e)
         }), 500
 
-@app.route("/videos/<filename>")
-def serve_video(filename):
-    return app.send_static_file(filename)
+@app.route("/clips/<filename>")
+def serve_clip(filename):
+    return send_from_directory(CLIP_FOLDER, filename)
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
