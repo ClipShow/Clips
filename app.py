@@ -1,11 +1,11 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_from_directory
 import subprocess
 import uuid
 import os
-import traceback
 
 app = Flask(__name__)
-app.static_folder = os.getcwd()
+VIDEO_FOLDER = os.path.join(os.getcwd(), "videos")
+os.makedirs(VIDEO_FOLDER, exist_ok=True)
 
 @app.route("/clip", methods=["POST"])
 def clip_video():
@@ -17,43 +17,40 @@ def clip_video():
         return jsonify({"error": "Missing YouTube URL"}), 400
 
     video_id = str(uuid.uuid4())
-    output_filename = f"{video_id}.mp4"
+    input_path = os.path.join(VIDEO_FOLDER, f"{video_id}_input.mp4")
+    output_path = os.path.join(VIDEO_FOLDER, f"{video_id}.mp4")
 
     try:
-        # Download video using yt-dlp with cookies for authentication
+        # Download video with yt-dlp and cookies
         subprocess.run([
             "yt-dlp",
             "--cookies", "cookies.txt",
-            "-f", "bestvideo[ext=mp4]+bestaudio[ext=m4a]/mp4",
-            "-o", "input.%(ext)s",
+            "-f", "best[ext=mp4]/mp4",
+            "-o", input_path,
             video_url
         ], check=True)
 
-        # Clip 30 seconds from 5s mark
+        # Clip video with ffmpeg
         subprocess.run([
             "ffmpeg", "-y",
-            "-i", "input.mp4",
+            "-i", input_path,
             "-ss", "00:00:05", "-t", "00:00:30",
             "-vf", "scale=720:1280",
-            output_filename
+            output_path
         ], check=True)
 
+        clip_url = f"/videos/{os.path.basename(output_path)}"
         return jsonify({
-            "clipUrl": f"/videos/{output_filename}",
+            "clipUrl": clip_url,
             "creator": creator
         })
 
-    except Exception as e:
-        print("⚠️ ERROR:")
-        print(traceback.format_exc())  # Logs full traceback
-        return jsonify({
-            "error": "Processing failed",
-            "details": str(e)
-        }), 500
+    except subprocess.CalledProcessError as e:
+        return jsonify({"error": "Processing failed", "details": str(e)}), 500
 
 @app.route("/videos/<filename>")
 def serve_video(filename):
-    return app.send_static_file(filename)
+    return send_from_directory(VIDEO_FOLDER, filename)
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
