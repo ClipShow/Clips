@@ -19,15 +19,16 @@ def clip_video():
     output_filename = f"{video_id}.mp4"
 
     try:
-        # Download video
+        # Download video using yt-dlp with cookies for authentication
         subprocess.run([
             "yt-dlp",
+            "--cookies", "cookies.txt",  # <- this line enables login-required content
             "-f", "bestvideo[ext=mp4]+bestaudio[ext=m4a]/mp4",
             "-o", "input.%(ext)s",
             video_url
         ], check=True)
 
-        # Clip 30 seconds
+        # Clip 30 seconds from 5s mark
         subprocess.run([
             "ffmpeg", "-y",
             "-i", "input.mp4",
@@ -42,7 +43,10 @@ def clip_video():
         })
 
     except subprocess.CalledProcessError as e:
-        return jsonify({"error": "Processing failed", "details": str(e)}), 500
+        return jsonify({
+            "error": "Processing failed",
+            "details": str(e)
+        }), 500
 
 @app.route("/videos/<filename>")
 def serve_video(filename):
