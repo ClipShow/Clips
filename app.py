@@ -23,7 +23,6 @@ def clip_video():
 
         subprocess.run([
             "yt-dlp",
-            "--cookies", "cookies.txt",
             "-f", "bestvideo[ext=mp4]+bestaudio[ext=m4a]/mp4",
             "-o", "input.%(ext)s",
             video_url
@@ -53,6 +52,6 @@ def clip_video():
 def serve_video(filename):
     return app.send_static_file(filename)
 
-@app.route("/")  # Healthcheck
+@app.route("/")  # Healthcheck route
 def home():
     return "OK", 200
