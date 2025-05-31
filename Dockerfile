@@ -1,18 +1,18 @@
 FROM python:3.12-slim
 
-# Install dependencies
+# Install system dependencies
 RUN apt-get update && \
     apt-get install -y ffmpeg curl && \
-    pip install flask yt-dlp gunicorn
+    pip install flask yt-dlp
 
 # Set working directory
 WORKDIR /app
 
-# Copy app files
+# Copy all project files
 COPY . .
 
-# Expose the port Railway will call
+# Expose port
 EXPOSE 5000
 
-# Launch with Gunicorn
-CMD ["gunicorn", "-b", "0.0.0.0:5000", "app:app"]
+# Start app using Flask's built-in server
+CMD ["python", "app.py"]
