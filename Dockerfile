@@ -1,6 +1,6 @@
 FROM python:3.12-slim
 
-# Install dependencies
+# Install system dependencies
 RUN apt-get update && \
     apt-get install -y ffmpeg curl && \
     pip install flask yt-dlp gunicorn
@@ -8,11 +8,11 @@ RUN apt-get update && \
 # Set working directory
 WORKDIR /app
 
-# Copy project files
+# Copy all project files
 COPY . .
 
 # Expose port
 EXPOSE 5000
 
-# Start server with Gunicorn for production
-CMD ["gunicorn", "--bind", "0.0.0.0:5000", "app:app"]
+# Use Gunicorn to serve app
+CMD ["gunicorn", "-b", "0.0.0.0:5000", "app:app"]
