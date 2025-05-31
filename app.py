@@ -1,10 +1,11 @@
-from flask import Flask, request, jsonify
-import subprocess
-import uuid
-import os
+from flask import Flask, request, jsonify, send_from_directory
+import subprocess, uuid, os
 
 app = Flask(__name__)
-app.static_folder = os.getcwd()
+
+# Serve videos from this folder
+VIDEO_DIR = os.path.join(os.getcwd(), "videos")
+os.makedirs(VIDEO_DIR, exist_ok=True)
 
 @app.route("/clip", methods=["POST"])
 def clip_video():
@@ -17,12 +18,9 @@ def clip_video():
             return jsonify({"error": "Missing YouTube URL"}), 400
 
         video_id = str(uuid.uuid4())
-        output_filename = f"{video_id}.mp4"
+        output_path = os.path.join(VIDEO_DIR, f"{video_id}.mp4")
 
-        # Log start
-        print(f"🎬 Clipping video for {creator}: {video_url}")
-
-        # Download video
+        # Download full video
         subprocess.run([
             "yt-dlp",
             "--cookies", "cookies.txt",
@@ -31,30 +29,28 @@ def clip_video():
             video_url
         ], check=True)
 
-        # Clip 30s from 5s mark
+        # Clip 30s from 5s
         subprocess.run([
             "ffmpeg", "-y",
             "-i", "input.mp4",
             "-ss", "00:00:05", "-t", "00:00:30",
             "-vf", "scale=720:1280",
-            output_filename
+            output_path
         ], check=True)
 
         return jsonify({
-            "clipUrl": f"/videos/{output_filename}",
+            "clipUrl": f"/videos/{video_id}.mp4",
             "creator": creator
         })
 
     except subprocess.CalledProcessError as e:
-        print(f"❌ Subprocess error: {e}")
         return jsonify({"error": "Subprocess failed", "details": str(e)}), 500
     except Exception as e:
-        print(f"❌ General error: {e}")
         return jsonify({"error": "Unexpected error", "details": str(e)}), 500
 
 @app.route("/videos/<filename>")
 def serve_video(filename):
-    return app.send_static_file(filename)
+    return send_from_directory(VIDEO_DIR, filename)
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
