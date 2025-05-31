@@ -23,22 +23,16 @@ def clip_video():
         video_id = str(uuid.uuid4())
         output_filename = f"{video_id}.mp4"
 
-        # Log start
-        print(f"🎬 Clipping video for {creator}: {video_url}")
-
         # Download video
         subprocess.run([
-            "yt-dlp",
-            "--cookies", "cookies.txt",
+            "yt-dlp", "--cookies", "cookies.txt",
             "-f", "bestvideo[ext=mp4]+bestaudio[ext=m4a]/mp4",
-            "-o", "input.%(ext)s",
-            video_url
+            "-o", "input.%(ext)s", video_url
         ], check=True)
 
         # Clip 30s from 5s mark
         subprocess.run([
-            "ffmpeg", "-y",
-            "-i", "input.mp4",
+            "ffmpeg", "-y", "-i", "input.mp4",
             "-ss", "00:00:05", "-t", "00:00:30",
             "-vf", "scale=720:1280",
             os.path.join("videos", output_filename)
@@ -50,10 +44,8 @@ def clip_video():
         })
 
     except subprocess.CalledProcessError as e:
-        print(f"❌ Subprocess error: {e}")
         return jsonify({"error": "Subprocess failed", "details": str(e)}), 500
     except Exception as e:
-        print(f"❌ General error: {e}")
         return jsonify({"error": "Unexpected error", "details": str(e)}), 500
 
 @app.route("/videos/<filename>")
