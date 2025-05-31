@@ -8,11 +8,14 @@ RUN apt-get update && \
 # Set working directory
 WORKDIR /app
 
-# Copy all project files
+# Copy app files
 COPY . .
+
+# Ensure the videos folder exists
+RUN mkdir -p /app/videos
 
 # Expose port
 EXPOSE 5000
 
-# Use Gunicorn to serve app
+# Run gunicorn
 CMD ["gunicorn", "-b", "0.0.0.0:5000", "app:app"]
