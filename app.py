@@ -1,43 +1,43 @@
-from flask import Flask, request, jsonify, send_from_directory
+from flask import Flask, request, jsonify
 import subprocess
 import uuid
 import os
 
 app = Flask(__name__)
-OUTPUT_DIR = "videos"
-os.makedirs(OUTPUT_DIR, exist_ok=True)
+app.static_folder = os.getcwd()
 
 @app.route("/clip", methods=["POST"])
 def clip_video():
-    data = request.get_json()
-    video_url = data.get("url")
-    creator = data.get("creator", "unknown")
-
-    if not video_url:
-        return jsonify({"error": "Missing YouTube URL"}), 400
-
     try:
-        # Step 1: Download YouTube video
-        input_filename = "input.mp4"
+        data = request.get_json()
+        video_url = data.get("url")
+        creator = data.get("creator", "unknown")
+
+        if not video_url:
+            return jsonify({"error": "Missing YouTube URL"}), 400
+
+        video_id = str(uuid.uuid4())
+        output_filename = f"{video_id}.mp4"
+
+        # Log start
+        print(f"🎬 Clipping video for {creator}: {video_url}")
+
+        # Download video
         subprocess.run([
             "yt-dlp",
-            "--no-warnings",
+            "--cookies", "cookies.txt",
             "-f", "bestvideo[ext=mp4]+bestaudio[ext=m4a]/mp4",
-            "-o", input_filename,
+            "-o", "input.%(ext)s",
             video_url
         ], check=True)
 
-        # Step 2: Clip 30s from 5s mark
-        clip_id = str(uuid.uuid4())
-        output_filename = f"{clip_id}.mp4"
-        output_path = os.path.join(OUTPUT_DIR, output_filename)
-
+        # Clip 30s from 5s mark
         subprocess.run([
             "ffmpeg", "-y",
-            "-i", input_filename,
+            "-i", "input.mp4",
             "-ss", "00:00:05", "-t", "00:00:30",
             "-vf", "scale=720:1280",
-            output_path
+            output_filename
         ], check=True)
 
         return jsonify({
@@ -46,14 +46,15 @@ def clip_video():
         })
 
     except subprocess.CalledProcessError as e:
-        return jsonify({
-            "error": "Clipping failed",
-            "details": str(e)
-        }), 500
+        print(f"❌ Subprocess error: {e}")
+        return jsonify({"error": "Subprocess failed", "details": str(e)}), 500
+    except Exception as e:
+        print(f"❌ General error: {e}")
+        return jsonify({"error": "Unexpected error", "details": str(e)}), 500
 
-@app.route("/videos/<path:filename>")
-def serve_clip(filename):
-    return send_from_directory(OUTPUT_DIR, filename)
+@app.route("/videos/<filename>")
+def serve_video(filename):
+    return app.send_static_file(filename)
 
 if __name__ == "__main__":
-    app.run(debug=False, host="0.0.0.0", port=5000)
+    app.run(host="0.0.0.0", port=5000)
