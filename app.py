@@ -6,6 +6,10 @@ import os
 app = Flask(__name__)
 app.static_folder = os.getcwd()
 
+@app.route("/")
+def home():
+    return "✅ ClipShow API is running."
+
 @app.route("/clip", methods=["POST"])
 def clip_video():
     try:
@@ -19,8 +23,10 @@ def clip_video():
         video_id = str(uuid.uuid4())
         output_filename = f"{video_id}.mp4"
 
+        # Log start
         print(f"🎬 Clipping video for {creator}: {video_url}")
 
+        # Download video
         subprocess.run([
             "yt-dlp",
             "--cookies", "cookies.txt",
@@ -29,12 +35,13 @@ def clip_video():
             video_url
         ], check=True)
 
+        # Clip 30s from 5s mark
         subprocess.run([
             "ffmpeg", "-y",
             "-i", "input.mp4",
             "-ss", "00:00:05", "-t", "00:00:30",
             "-vf", "scale=720:1280",
-            output_filename
+            os.path.join("videos", output_filename)
         ], check=True)
 
         return jsonify({
@@ -51,11 +58,7 @@ def clip_video():
 
 @app.route("/videos/<filename>")
 def serve_video(filename):
-    return app.send_static_file(filename)
-
-@app.route("/")  # 👈 THIS IS THE FIX
-def home():
-    return "✅ ClipShow API is running."
+    return app.send_static_file(os.path.join("videos", filename))
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
