@@ -8,11 +8,11 @@ RUN apt-get update && \
 # Set working directory
 WORKDIR /app
 
-# Copy project files
+# Copy all project files
 COPY . .
 
 # Expose port
 EXPOSE 5000
 
-# Start with Gunicorn (recommended for production)
+# Use Gunicorn to serve app
 CMD ["gunicorn", "-b", "0.0.0.0:5000", "app:app"]
