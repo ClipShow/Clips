@@ -4,8 +4,8 @@ import uuid
 import os
 
 app = Flask(__name__)
-VIDEO_FOLDER = os.path.join(os.getcwd(), "videos")
-os.makedirs(VIDEO_FOLDER, exist_ok=True)
+OUTPUT_DIR = "videos"
+os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 @app.route("/clip", methods=["POST"])
 def clip_video():
@@ -16,41 +16,44 @@ def clip_video():
     if not video_url:
         return jsonify({"error": "Missing YouTube URL"}), 400
 
-    video_id = str(uuid.uuid4())
-    input_path = os.path.join(VIDEO_FOLDER, f"{video_id}_input.mp4")
-    output_path = os.path.join(VIDEO_FOLDER, f"{video_id}.mp4")
-
     try:
-        # Download video with yt-dlp and cookies
+        # Step 1: Download YouTube video
+        input_filename = "input.mp4"
         subprocess.run([
             "yt-dlp",
-            "--cookies", "cookies.txt",
-            "-f", "best[ext=mp4]/mp4",
-            "-o", input_path,
+            "--no-warnings",
+            "-f", "bestvideo[ext=mp4]+bestaudio[ext=m4a]/mp4",
+            "-o", input_filename,
             video_url
         ], check=True)
 
-        # Clip video with ffmpeg
+        # Step 2: Clip 30s from 5s mark
+        clip_id = str(uuid.uuid4())
+        output_filename = f"{clip_id}.mp4"
+        output_path = os.path.join(OUTPUT_DIR, output_filename)
+
         subprocess.run([
             "ffmpeg", "-y",
-            "-i", input_path,
+            "-i", input_filename,
             "-ss", "00:00:05", "-t", "00:00:30",
             "-vf", "scale=720:1280",
             output_path
         ], check=True)
 
-        clip_url = f"/videos/{os.path.basename(output_path)}"
         return jsonify({
-            "clipUrl": clip_url,
+            "clipUrl": f"/videos/{output_filename}",
             "creator": creator
         })
 
     except subprocess.CalledProcessError as e:
-        return jsonify({"error": "Processing failed", "details": str(e)}), 500
+        return jsonify({
+            "error": "Clipping failed",
+            "details": str(e)
+        }), 500
 
-@app.route("/videos/<filename>")
-def serve_video(filename):
-    return send_from_directory(VIDEO_FOLDER, filename)
+@app.route("/videos/<path:filename>")
+def serve_clip(filename):
+    return send_from_directory(OUTPUT_DIR, filename)
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000)
+    app.run(debug=False, host="0.0.0.0", port=5000)
