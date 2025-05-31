@@ -1,18 +1,18 @@
+
+# Minimal Dockerfile to test Railway build
 FROM python:3.12-slim
 
-# Install system dependencies
-RUN apt-get update && \
-    apt-get install -y ffmpeg curl && \
-    pip install flask yt-dlp gunicorn
+# Install Flask
+RUN pip install flask gunicorn
 
 # Set working directory
 WORKDIR /app
 
-# Copy everything into the container
-COPY . .
+# Copy app
+COPY app.py .
 
-# Expose Flask port
+# Expose port
 EXPOSE 5000
 
-# Run with Gunicorn
+# Start with Gunicorn
 CMD ["gunicorn", "-b", "0.0.0.0:5000", "app:app"]
