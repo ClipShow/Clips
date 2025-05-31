@@ -8,14 +8,14 @@ RUN apt-get update && \
 # Set working directory
 WORKDIR /app
 
-# Copy app files
+# Copy project files
 COPY . .
 
-# Ensure the videos folder exists
-RUN mkdir -p /app/videos
+# Ensure writable directory for saving output
+RUN mkdir -p /app/videos && chmod -R 777 /app/videos
 
-# Expose port
+# Expose Flask port
 EXPOSE 5000
 
-# Run gunicorn
+# Run with Gunicorn
 CMD ["gunicorn", "-b", "0.0.0.0:5000", "app:app"]
